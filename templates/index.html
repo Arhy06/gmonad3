@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>💜 GMONAD3 💜</title>
+    <style>
+        body {
+            background-color: #87ceeb;
+            font-family: 'Segoe UI', cursive;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            background-color: #b000e0;
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 4px 4px 8px #888888;
+        }
+        h3 {
+            background-color: gray;
+            color: #ffffff;
+        }
+        input, button {
+            display: block;
+            width: 90%;
+            max-width: 500px;
+            margin: 10px auto;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: none;
+        }
+        #launchBtn {
+            background-color: #aef6ae;
+            font-weight: bold;
+            padding: 35px;
+        }
+        #stopBtn {
+            background-color: #f4b1b1;
+            font-weight: bold;
+            padding: 10px;
+        }
+        #logs {
+            background-color: #111;
+            color: white;
+            padding: 15px;
+            margin-top: 20px;
+            width: 90%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            border-radius: 10px;
+            text-align: left;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #progressBar {
+            height: 10px;
+            background-color: green;
+            width: 0%;
+            transition: width 0.5s;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>💜 GMONAD 💜<br>🤖 Booster l'activité de vos wallets sur Monad Testnet,<br>c'est mon Job. </h1>
+
+<form id="botForm">
+    <input type="text" name="pk1" id="pk1" placeholder="Clé privée du Wallet 1" required>
+    <input type="text" name="addr1" id="addr1" placeholder="Adresse du Wallet 1" required>
+    <input type="text" name="pk2" id="pk2" placeholder="Clé privée du Wallet 2" required>
+    <input type="text" name="addr2" id="addr2" placeholder="Adresse du Wallet 2" required>
+    <input type="text" name="amount" id="amount" placeholder="Montant en MON" required>
+    <input type="number" name="repeat" id="repeat" value="100" min="1" max="1000" placeholder="Nombre de répétitions">
+    <button type="submit" id="launchBtn">🚀 Lancer le Bot</button>
+</form>
+
+<button id="stopBtn">🔴 Arrêter le Bot</button>
+
+<div id="progressBar"></div>
+
+<!-- Spinner de chargement -->
+<div id="loadingSpinner" style="display:none; margin-top: 20px;">
+    <img src="https://i.gifer.com/ZZ5H.gif" alt="Chargement..." width="80">
+    <p style="font-weight:bold;">🤖 Je suis en cours d'exécution ⏳</p>
+</div>
+
+<h3>📜 HISTORIQUE</h3>
+<div id="logs">Aucun log pour l’instant.</div>
+
+<script>
+    const form = document.getElementById("botForm");
+    const logs = document.getElementById("logs");
+    const spinner = document.getElementById("loadingSpinner");
+    const progressBar = document.getElementById("progressBar");
+    const stopBtn = document.getElementById("stopBtn");
+
+    let intervalId;
+    let totalRepeat = 0;
+    let currentStep = 0;
+
+    form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        logs.innerHTML = "⏳ Lancement du bot...<br>";
+        spinner.style.display = "block";
+        progressBar.style.width = "0%";
+        currentStep = 0;
+
+        const formData = new FormData(form);
+        totalRepeat = parseInt(document.getElementById("repeat").value) || 1;
+
+        fetch("/start", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.text())
+        .then(result => {
+            logs.innerHTML += result + "<br>";
+        })
+        .catch(error => {
+            logs.innerHTML += `❌ Erreur réseau : ${error.message}<br>`;
+            spinner.style.display = "none";
+        });
+
+        intervalId = setInterval(fetchLogs, 2000);
+    });
+
+    stopBtn.addEventListener("click", function () {
+        fetch("/stop", {
+            method: "POST"
+        })
+        .then(response => response.text())
+        .then(msg => {
+            logs.innerHTML += `<br>🛑 ${msg}`;
+            clearInterval(intervalId);
+            spinner.style.display = "none";
+        })
+        .catch(error => {
+            logs.innerHTML += `<br>❌ Erreur lors de l'arrêt du bot : ${error.message}`;
+        });
+    });
+
+    function fetchLogs() {
+        fetch('/logs')
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    data.forEach(entry => {
+                        logs.innerHTML += `${entry}<br>`;
+                        logs.scrollTop = logs.scrollHeight;
+
+                        if (entry.includes("Intéraction")) {
+                            currentStep++;
+                            const percent = Math.min((currentStep / totalRepeat) * 100, 100);
+                            progressBar.style.width = `${percent}%`;
+                        }
+
+                        if (entry.includes("Toutes les transactions sont terminées") || entry.includes("🛑 Bot arrêté")) {
+                            clearInterval(intervalId);
+                            spinner.style.display = "none";
+                            progressBar.style.width = "100%";
+                        }
+                    });
+                }
+            })
+            .catch(err => {
+                logs.innerHTML += `<br>⚠️ Erreur récupération logs : ${err.message}`;
+            });
+    }
+</script>
+
+</body>
+</html>
