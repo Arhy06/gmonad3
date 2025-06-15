@@ -72,7 +72,7 @@ def monad_bot(pk1, addr1, pk2, addr2, amount, repeat):
 
 @app.route('/')
 def index():
-    return render_template("frontend-of-Gmonad3.html")
+    return render_template("index.html")
 
 @app.route('/start', methods=['POST'])
 def start():
